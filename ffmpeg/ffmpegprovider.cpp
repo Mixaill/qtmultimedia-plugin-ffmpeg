@@ -623,7 +623,11 @@ bool FFmpegProvider::setMedia(const QString &_url)
         if (_ffmpeg->audio_stream_index >= 0) {
             auto ctx = _ffmpeg->pAudioCtx;
             _info.audio.bit_rate = ctx->bit_rate;
+#if LIBAVCODEC_VERSION_MAJOR >= 61
+            _info.audio.channels = ctx->ch_layout.nb_channels;
+#else
             _info.audio.channels = ctx->channels;
+#endif
             _info.audio.sample_rate = ctx->sample_rate;
             _info.audio.codec = QString::fromUtf8(ctx->codec_descriptor->name);
         }
@@ -1237,8 +1241,11 @@ FFmpegProvider::State DecoderThread::toFFmpegState(PlayState s)
 static void setup_array(uint8_t* out[], AVFrame* in_frame, enum AVSampleFormat format, int /*samples*/)
 {
     if (av_sample_fmt_is_planar(format)) {
-        int i;
-        for (i = 0; i < in_frame->channels; i++) {
+#if LIBAVCODEC_VERSION_MAJOR >= 61
+        for (int i = 0; i < in_frame->ch_layout.nb_channels; i++) {
+#else
+        for (int i = 0; i < in_frame->channels; i++) {
+#endif
             out[i] = in_frame->data[i];
         }
     } else {
@@ -1273,7 +1280,11 @@ void DecoderThread::run()
     if (audio_ctx != nullptr) { // only when there is audio
         swr_ctx = swr_alloc();
 
+#if LIBAVCODEC_VERSION_MAJOR >= 61
+        av_opt_set_chlayout(swr_ctx, "in_channel_layout", &audio_ctx->ch_layout, 0);
+#else
         av_opt_set_int(swr_ctx, "in_channel_layout", audio_ctx->channel_layout, 0);
+#endif
         av_opt_set_int(swr_ctx, "in_sample_rate", audio_ctx->sample_rate, 0);
         av_opt_set_sample_fmt(swr_ctx, "in_sample_fmt", audio_ctx->sample_fmt, 0);
 
@@ -1421,7 +1432,11 @@ void DecoderThread::run()
                                 res = avcodec_receive_frame(audio_ctx, frame); // decodes to RAW PCM?
 
                                 if (res >= 0) {
+#if LIBAVUTIL_VERSION_MAJOR >= 59
+                                    int n_channels = av_popcount(AV_CH_LAYOUT_STEREO);
+#else
                                     int n_channels = av_get_channel_layout_nb_channels(AV_CH_LAYOUT_STEREO);
+#endif
 
                                     int n_samples;
                                     if (max_n_samples == -1) {
