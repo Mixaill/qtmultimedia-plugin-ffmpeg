@@ -194,7 +194,11 @@ void MediaPlayerControl::setMedia(const QMediaContent& media, QIODevice* io)
     if (io) {
         _provider->setMedia(QString("qio:%1").arg(qintptr(io)));
     } else {
+#if QT_VERSION >= QT_VERSION_CHECK(5,13,0)
         QUrl u(media.request().url());
+#else
+        QUrl u(media.canonicalUrl());
+#endif
         if (u.isLocalFile())
             _provider->setMedia(u.toLocalFile()); // for windows
         else
