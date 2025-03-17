@@ -15,6 +15,7 @@
 #define FFMPEG_PROVIDER_LICENSE "v0.1 (c) 2021 Hans Dijkema, License: LGPLv3"
 #define FFMPEG_PROVIDER_NAME    "QMultimedia Plugin ffmpeg-plugin"
 
+#include <functional>
 #include <QObject>
 #include <QHash>
 #include <QList>
